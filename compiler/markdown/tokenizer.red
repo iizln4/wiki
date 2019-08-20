@@ -6,7 +6,7 @@ Red [
 
 do %tokens.red
 
-tokenizer: function [
+tokenize: function [
     "converts an input Markdown string into tokens"
     str [string!]
 ] [
@@ -51,6 +51,8 @@ tokenizer: function [
                 "*" (append tokens make Asterisk [])
             |
                 "_" (append tokens make Underscore [])
+            |
+                "~" (append tokens make Tilde [])
             |
                 "+" (append tokens make Plus [])
             |

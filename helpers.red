@@ -183,11 +183,14 @@ objectToString: function [
     obj [object!]
 ] [
     words: words-of obj
-    values: values-of obj
-    str: copy ""
-    repeat i length? words [
-        append str rejoin [words/(i) ": " values/(i) "^/"]
+    str: copy "object!: [^/"
+    foreach word words [
+        value: get in obj word
+
+        stringifiedValue: mold :value
+        append str rejoin [tab tab word ": " stringifiedValue "^/"]
     ]
+    append str rejoin [tab "]^/"]
     str
 ]
 
@@ -196,9 +199,9 @@ errorToString: function [
     error [error!]
 ] [
     errorIDBlock: get error/id
-    arg1: to-string error/arg1
-    arg2: to-string error/arg2
-    arg3: to-string error/arg3
+    arg1: mold error/arg1
+    arg2: mold error/arg2
+    arg3: mold error/arg3
     usefulError: bind to-block errorIDBlock 'arg1
 
     ; adds a space in between each thing
@@ -209,7 +212,23 @@ errorToString: function [
         where: error/where
     ]
 
-    rejoin [usefulErrorString newline form errorIDBlock newline newline objectToString fieldsWeWant]
+    rejoin [usefulErrorString newline objectToString fieldsWeWant]
+]
+
+blockToString: function [
+    block [block!]
+] [
+    str: copy ""
+    append str "[^/"
+    foreach element block [
+        case [
+            object? element [append str rejoin [tab (objectToString element)]]
+            block? element [append str rejoin [tab (blockToString element)]]
+            true [append str rejoin [tab (mold element)]]
+        ]
+    ]
+    append str "]"
+    str
 ]
 
 findFiles: function [
@@ -256,4 +275,12 @@ sepJoin: function [
 ] [
     rejoin compose/only flatten 
         f_map lambda [reduce [? copy (sep)]] block
+]
+
+appendLastChar: function [
+    "Appends a character to the end of the string if it's not already there"
+    str [string!]
+    char [string!]
+] [
+    either (last str) == (to-char char) [str] [append str char]
 ]
