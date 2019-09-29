@@ -20,6 +20,14 @@ contains?: function [
     not none? find s e
 ]
 
+isOneOf: make op! function [
+    "returns if 'e is inside 's"
+    e [any-type!] 
+    s [series!]
+] [
+    contains? s e
+]
+
 startsWith: function [
     "returns whether 'series starts with 'value"
     series [series!]
@@ -123,13 +131,18 @@ f_map: function [
     "The functional map"
     f  [function!] "the function to use, as a lambda function" 
     block [block!] "the block to map across"
+    /notOnly "insert block! elements as single values (opposite to 'append/only)"
 ] [
-    result: copy/deep block
-    while [not tail? result] [
-        replacement: f first result
-        result: change/part result replacement 1
+    result: copy []
+    while [not tail? block] [
+        either notOnly [
+            append result f first block
+        ] [
+            append/only result f first block
+        ]
+        block: next block
     ]
-    head result
+    result
 ]
 
 f_fold: function [
@@ -179,18 +192,95 @@ assert: function [
     ]
 ]
 
-objectToString: function [
-    obj [object!]
+prettyFormat: function [
+    "converts the thing into a nicely formatted string"
+    thing [any-type!]
 ] [
+    case [
+        object? :thing [objectToString :thing]
+        block? :thing [blockToString :thing]
+        true [mold :thing]
+    ]
+]
+
+prettyPrint: function [
+    "prints the thing as a nicely formatted string"
+    thing [any-type!]
+] [
+    print prettyFormat thing
+]
+
+objectToString: function [
+    "converts the object! to a nicely formatted string"
+    obj [object!]
+    /objectIndent "indent the start and end of the object with a number of tabs"
+        objectIndentNumber [integer!]
+    /elementIndent "indent each element with a number of tabs"
+        elementIndentNumber [integer!]
+] [
+    objectIndentNumber: either objectIndent [objectIndentNumber] [0]
+    elementIndentNumber: either elementIndent [elementIndentNumber] [1]
+
+    objectTabs: copy [] loop objectIndentNumber [append objectTabs "    "]
+    keyValueTabs: copy [] loop elementIndentNumber [append keyValueTabs "    "]
+    
+    either (objectIndentNumber == 0) [
+        str: copy "object!: [^/"
+    ] [
+        str: copy rejoin [objectTabs "object!: [^/"]
+    ]
+
     words: words-of obj
-    str: copy "object!: [^/"
     foreach word words [
         value: get in obj word
 
-        stringifiedValue: mold :value
-        append str rejoin [tab tab word ": " stringifiedValue "^/"]
+        stringifiedValue: case [
+            object? :value [objectToString/elementIndent :value (elementIndentNumber + 1)]
+            block? :value [blockToString/elementIndent :value (elementIndentNumber + 1)]
+            true [mold :value]
+        ]
+
+        append str rejoin [keyValueTabs (to-string word) ": " stringifiedValue "^/"]
     ]
-    append str rejoin [tab "]^/"]
+
+    ; the closing bracket is always 1 less indent than the keyValue indent
+    append str rejoin [(next keyValueTabs) "]" ]
+    
+    str
+]
+
+blockToString: function [
+    "converts the block! to a nicely formatted string"
+    block [block!]
+    /blockIndent "indent the start and end of the block with a number of tabs"
+        blockIndentNumber [integer!]
+    /elementIndent "indent each element with a number of tabs"
+        elementIndentNumber [integer!]
+] [
+    blockIndentNumber: either blockIndent [blockIndentNumber] [0]
+    elementIndentNumber: either elementIndent [elementIndentNumber] [1]
+
+    blockTabs: copy [] loop blockIndentNumber [append blockTabs "    "]
+    elementTabs: copy [] loop elementIndentNumber [append elementTabs "    "]
+
+    either (blockIndentNumber == 0) [
+        str: copy "[^/"
+    ] [
+        str: copy rejoin [blockTabs "[^/"]
+    ]
+
+    foreach element block [
+        stringifiedValue: case [
+            object? :element [objectToString/elementIndent :element (elementIndentNumber + 1)]
+            block? :element [blockToString/elementIndent :element (elementIndentNumber + 1)]
+            true [mold :element]
+        ]
+
+        append str rejoin [elementTabs stringifiedValue "^/"]
+    ]
+
+    ; the closing bracket is always 1 less indent than the keyValue indent
+    append str rejoin [(next elementTabs) "]" ]
     str
 ]
 
@@ -213,22 +303,6 @@ errorToString: function [
     ]
 
     rejoin [usefulErrorString newline objectToString fieldsWeWant]
-]
-
-blockToString: function [
-    block [block!]
-] [
-    str: copy ""
-    append str "[^/"
-    foreach element block [
-        case [
-            object? element [append str rejoin [tab (objectToString element)]]
-            block? element [append str rejoin [tab (blockToString element)]]
-            true [append str rejoin [tab (mold element)]]
-        ]
-    ]
-    append str "]"
-    str
 ]
 
 findFiles: function [
@@ -298,11 +372,30 @@ deleteDir: function [
     ]
 ]
 
-sepJoin: function [
+join: function [
     "Returns a reduced block of values as a string, separated by a separator"
     block [block!]
     sep [string! char!]
 ] [
     rejoin compose/only flatten 
-        f_map lambda [reduce [? copy (sep)]] block
+        f_map lambda [reduce [? copy (to-string sep)]] block
+]
+
+pickProperties: function [
+    "Pick a list of properties from an object"
+    props [block!]
+    obj [object!]
+] [
+    words: words-of obj
+    propsAsWords: f_map lambda [to-word ?] props
+    propsToPick: intersect words propsAsWords
+
+    newObject: context []
+    foreach word propsToPick [
+        value: get in obj word
+        newObject: make newObject reduce [
+            (to-set-word :word) :value
+        ]
+    ]
+    newObject
 ]

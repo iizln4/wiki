@@ -6,152 +6,48 @@ Red [
 
 do %nodes.red
 
+INLINE_TOKEN_TYPES: [
+    "Text"
+    "Asterisk"
+    "Underscore"
+    "Tilde"
+    "LeftSquareBracket"
+    "RightSquareBracket"
+    "LeftBracket"
+    "RightBracket"
+    "ExclamationMark"
+    "UrlToken"
+]
+
 Parser: context [
+    file: ""
     tokens: [] ; a block! of Tokens from %tokens.red"
 
     peek: function [
         "returns whether the first token has the expected type"
         expectedToken [object!]
+        /at
+            offset [integer!]
     ] [
-        firstToken: first self/tokens
-        firstToken/isType expectedToken/type
+        offset: either at [offset] [1]
+        token: pick self/tokens offset
+
+        all [
+            found? token
+            token/isType expectedToken/type
+        ]
     ]
 
     consume: function [
         "removes the first token and returns it, if it has the expected type"
         expectedToken [object!]
     ] [
-        firstToken: first self/tokens
-        if (firstToken/isType expectedToken/type) [
+        currentToken: first self/tokens
+        if (currentToken/isType expectedToken/type) [
             self/tokens: next self/tokens
-            return firstToken
+            return currentToken
         ]
-        do make error! rejoin ["expected " expectedToken/type " but got " firstToken/type]
-    ]
-
-    parseNewline: does [
-        consume NewlineToken
-        either (peek NewlineToken) [
-            consume NewlineToken
-            make NewlineNode []
-        ] [
-            none
-        ]
-    ]
-
-    parseHeader1: does [
-        consume Header1
-        textToken: consume Text
-        consume NewlineToken
-
-        make HeaderNode [
-            size: 1
-            text: textToken/value
-        ]
-    ]
-    parseHeader2: does [
-        consume Header2
-        textToken: consume Text
-        consume NewlineToken
-
-        make HeaderNode [
-            size: 2
-            text: textToken/value
-        ]
-    ]
-    parseHeader3: does [
-        consume Header3
-        textToken: consume Text
-        consume NewlineToken
-
-        make HeaderNode [
-            size: 3
-            text: textToken/value
-        ]
-    ]
-    parseHeader4: does [
-        consume Header4
-        textToken: consume Text
-        consume NewlineToken
-
-        make HeaderNode [
-            size: 4
-            text: textToken/value
-        ]
-    ]
-    parseHeader5: does [
-        consume Header5
-        textToken: consume Text
-        consume NewlineToken
-
-        make HeaderNode [
-            size: 5
-            text: textToken/value
-        ]
-    ]
-    parseHeader6: does [
-        consume Header6
-        textToken: consume Text
-        consume NewlineToken
-
-        make HeaderNode [
-            size: 6
-            text: textToken/value
-        ]
-    ]
-
-    parseAsterisk: does [
-        consume Asterisk
-        case [
-            peek Text [
-                textToken: consume Text
-                consume Asterisk
-                return make EmphasisNode [
-                    text: textToken/value
-                ]
-            ]
-            peek Asterisk [
-                consume Asterisk
-                textToken: consume Text
-                consume Asterisk
-                consume Asterisk
-                return make StrongEmphasisNode [
-                    text: textToken/value
-                ]
-            ]
-
-            true [
-                firstToken: first self/tokens
-                do make error! rejoin ["expected Asterisk or Text but got " firstToken/type]
-            ]
-        ]
-    ]
-
-    parseUnderscore: does [
-        consume Underscore
-        case [
-            peek Text [
-                textToken: consume Text
-                consume Underscore
-                return make EmphasisNode [
-                    text: textToken/value
-                ]
-            ]
-            peek Underscore [
-                consume Underscore
-                textToken: consume Text
-                consume Underscore
-                consume Underscore
-                return make StrongEmphasisNode [
-                    text: textToken/value
-                ]
-            ]
-
-            true [
-                firstToken: first self/tokens
-                do make error! rejoin ["expected Underscore or Text but got " firstToken/type]
-            ]
-        ]
+        do make error! rejoin ["expected " expectedToken/type " but got " currentToken/type]
     ]
 
     parse: function [
@@ -185,68 +81,661 @@ Parser: context [
                             TEXT: "EXAMPLE"
                     ]
         }
-    ] [
-        self/tokens: rollMultipleTextTokens self/tokens
-        if error? tree: try [
-            markdownContent: copy []
+    ] [        
+        ; while not at stream end
+        ;   maybeParseParagraph, add to markdownChildren
+        ;   if not at stream end
+        ;       parse block tokens, add to markdownChildren
+
+        if error? tree: try/all [
+            markdownChildren: copy []
             until [
-                case [
-                    peek NewlineToken [
-                        maybeNewlineNode: parseNewline
-                        if (found? maybeNewlineNode) [
-                            append markdownContent maybeNewlineNode
-                        ]
-                        print "parsed newline"
-                    ]
-                    peek Header1 [
-                        append markdownContent parseHeader1
-                        print "parsed header1"
-                    ]
-                    peek Header2 [
-                        append markdownContent parseHeader2
-                        print "parsed header2"
-                    ]
-                    peek Header3 [
-                        append markdownContent parseHeader3
-                        print "parsed header3"
-                    ]
-                    peek Header4 [
-                        append markdownContent parseHeader4
-                        print "parsed header4"
-                    ]
-                    peek Header5 [
-                        append markdownContent parseHeader5
-                        print "parsed header5"
-                    ]
-                    peek Header6 [
-                        append markdownContent parseHeader6
-                        print "parsed header6"
-                    ]
+                maybeParagraphNode: maybeParseParagraph
+                if found? maybeParagraphNode [
+                    append markdownChildren maybeParagraphNode
+                ]
 
-                    peek Asterisk [
-                        append markdownContent parseAsterisk
-                        print "parsed asterisk"
-                    ]
-                    peek Underscore [
-                        append markdownContent parseUnderscore
-                        print "parsed underscore"
-                    ]
-
-                    true [
-                        print rejoin ["can't handle " (objectToString first self/tokens)]
-                        return none
+                if (not tail? self/tokens) [
+                    maybeBlockNode: maybeParseBlockTokens
+                    if found? maybeBlockNode [
+                        append markdownChildren maybeBlockNode
                     ]
                 ]
                 tail? self/tokens
             ]
 
             make MarkdownNode [
-                content: markdownContent
+                children: markdownChildren
             ]
         ] [
             strError: errorToString tree
-            print rejoin [newline "#####" newline "error: " strError]
+            print rejoin ["stream is " prettyFormat copy/part self/tokens 5]
+            print rejoin [newline "#####" newline "error: " strError { in file "} self/file {"}]
+            quit
         ]
         tree
-    ] 
+    ]
+
+    ; ####################
+    ;  inline nodes
+    ; ####################
+
+    ; collects all the consecutive inline tokens into a paragraph, if it should
+    maybeParseParagraph: does [
+        currentToken: first self/tokens
+        isParagraph: all [
+            not tail? self/tokens
+            found? currentToken
+            any [
+                currentToken/type isOneOf INLINE_TOKEN_TYPES
+
+                ; two Backticks in a row marks the start of a code block
+                all [
+                    peek/at Backtick 1
+                    not peek/at Backtick 2
+                ]
+
+                ; two Newlines in a row marks the start of a new paragraph
+                all [
+                    peek/at NewlineToken 1
+                    not peek/at NewlineToken 2
+                ]   
+            ]
+        ]
+        either isParagraph [
+            parseParagraph
+        ] [
+            none
+        ]
+    ]
+
+    ; collects all the consecutive inline tokens into a paragraph
+    parseParagraph: does [
+        paragraphNodeChildren: copy []
+        lastNodeWasInline: true
+        while [
+            currentToken: first self/tokens
+            all [
+                not tail? self/tokens
+                found? currentToken
+                any [
+                    currentToken/type isOneOf INLINE_TOKEN_TYPES
+
+                    ; two Backticks in a row marks the start of a code block
+                    all [
+                        peek/at Backtick 1
+                        not peek/at Backtick 2
+                    ]
+                    
+                    ; two Newlines in a row marks the start of a new paragraph
+                    all [
+                        peek/at NewlineToken 1
+                        not peek/at NewlineToken 2
+                    ]   
+
+                    ; maybeParseInlineTokens returns 'none if it sees two backtick tokens in a row - this is the start of a code block, which isn't inline
+                    not lastNodeWasInline
+                ]
+            ]
+        ] [
+            maybeInlineNode: maybeParseInlineTokens
+            either found? maybeInlineNode [
+                if any [ ; we don't want to include a blank line at the start of a paragraph, it looks bad
+                    not empty? paragraphNodeChildren
+                    maybeInlineNode/type <> "NewlineNode"
+                ] [
+                    append paragraphNodeChildren maybeInlineNode
+                ]
+            ] [
+                lastNodeWasInline: false
+            ]  
+        ]
+
+        ; we don't want newlines at the end of paragraphs, either
+        if empty? paragraphNodeChildren [
+            return none
+        ]
+        lastNodeInParagraph: last paragraphNodeChildren
+        if (lastNodeInParagraph/type == "NewlineNode") [
+            remove back tail paragraphNodeChildren
+        ]
+
+        make ParagraphNode [
+            children: paragraphNodeChildren
+        ]
+    ]
+
+    maybeParseInlineTokens: does [
+        case [
+            peek NewlineToken [
+                parseNewline
+            ]
+            peek Text [
+                parseText
+            ]
+
+            peek Asterisk [
+                parseAsterisk
+            ]
+            peek Underscore [
+                parseUnderscore
+            ]
+            peek Tilde [
+                parseTilde
+            ]
+
+            peek LeftSquareBracket [
+                parseLeftSquareBracket
+            ]
+            peek RightSquareBracket [
+                parseRightSquareBracket
+            ]
+            peek LeftBracket [
+                parseLeftBracket
+            ]
+            peek RightBracket [
+                parseRightBracket
+            ]
+
+            peek Backtick [
+                either peek/at Backtick 2 [ ; this is the start of a code block, which isn't inline
+                    return none
+                ] [
+                    parseBacktick
+                ]
+            ]
+
+            ; it's inline if it's just a !
+            peek ExclamationMark [
+                parseExclamationMark
+            ]
+
+            peek UrlToken [
+                parseUrlToken
+            ]
+
+            true [
+                badToken: first self/tokens
+                print rejoin ["stream is " prettyFormat copy/part self/tokens 5]
+                print rejoin ["can't handle " badToken/type {Token in file "} self/file {", maybeParseInlineTokens}]
+                quit
+            ]
+        ]
+    ]
+
+    parseNewline: does [
+        consume NewlineToken
+        make NewlineNode []
+    ]
+
+    parseText: does [
+        textToken: consume Text
+        make TextNode [
+            text: textToken/value
+        ]
+    ]
+
+    parseAsterisk: does [
+        consume Asterisk
+        case [
+            peek Text [
+                textToken: consume Text
+                consume Asterisk
+                return make EmphasisNode [
+                    text: textToken/value
+                ]
+            ]
+            peek Asterisk [
+                consume Asterisk
+                textToken: consume Text
+                consume Asterisk
+                consume Asterisk
+                return make StrongEmphasisNode [
+                    text: textToken/value
+                ]
+            ]
+
+            true [
+                currentToken: first self/tokens
+                do make error! rejoin ["expected Asterisk or Text but got " currentToken/type { in file "} self/file {"}]
+            ]
+        ]
+    ]
+
+    parseUnderscore: does [
+        consume Underscore
+        case [
+            peek Text [
+                textToken: consume Text
+                consume Underscore
+                return make EmphasisNode [
+                    text: textToken/value
+                ]
+            ]
+            peek Underscore [
+                consume Underscore
+                textToken: consume Text
+                consume Underscore
+                consume Underscore
+                return make StrongEmphasisNode [
+                    text: textToken/value
+                ]
+            ]
+
+            true [
+                currentToken: first self/tokens
+                do make error! rejoin ["expected Underscore or Text but got " currentToken/type { in file "} self/file {"}]
+            ]
+        ]
+    ]
+
+    parseTilde: does [
+        consume Tilde
+        if peek Tilde [
+            consume Tilde
+        ]
+
+        strikethroughText: copy ""
+        until [
+            currentToken: first self/tokens
+            if (found? currentToken) [
+                append strikethroughText currentToken/value 
+            ]
+            self/tokens: next self/tokens
+
+            peek Tilde
+            any [
+                tail? self/tokens
+                not found? currentToken
+                peek Tilde
+            ]
+        ]
+        consume Tilde
+        if peek Tilde [
+            consume Tilde
+        ]
+
+        return make StrikethroughNode [
+            text: strikethroughText
+        ]
+    ]
+
+    parseLeftSquareBracket: does [
+        consume LeftSquareBracket
+
+        ; it's a URL; if I want to type a literal LeftSquareBracket, it'll be \[, which is just a Text token
+        ; we need to handle the text like this cos it might have Underscores or Asterisks in it, and we don't want to confuse them with Emphasis markers
+        if (peek Text) [
+            ; the link's text is the value of all the tokens until a RightSquareBracket is peeked
+            textValue: copy ""
+            until [
+                currentToken: first self/tokens
+                append textValue currentToken/value 
+                self/tokens: next self/tokens
+
+                peek RightSquareBracket
+            ]
+            consume RightSquareBracket
+            consume LeftBracket
+
+            ; the link's url is the value of all the tokens until a RightBracket is peeked
+            urlValue: copy ""
+            until [
+                currentToken: first self/tokens
+                append urlValue currentToken/value 
+                self/tokens: next self/tokens
+
+                peek RightBracket
+            ]
+            consume RightBracket
+
+            return make LinkNode [
+                url: urlValue
+                text: textValue
+            ]
+        ]
+        return make TextNode [
+            text: "["
+        ]
+    ]
+
+    parseRightSquareBracket: does [
+        consume RightSquareBracket
+        return make TextNode [
+            text: "]"
+        ]
+    ]
+
+    parseLeftBracket: does [
+        consume LeftBracket
+        make TextNode [
+            text: "("
+        ]
+    ]
+
+    parseRightBracket: does [
+        consume RightBracket
+        make TextNode [
+            text: ")"
+        ]
+    ]
+
+    parseBacktick: does [
+        consume Backtick
+        either peek Backtick [ ; the start of a code block, which is 1 by three backticks
+            consume Backtick
+            consume Backtick
+
+            ; we don't need to include this extra newline
+            if (peek NewlineToken) [
+                consume NewlineToken
+            ]
+
+            codeContent: copy ""
+            until [
+                currentToken: first self/tokens
+                append codeContent currentToken/value 
+                self/tokens: next self/tokens
+
+                ; we want to ignore the last newline too
+                any [
+                    all [
+                        peek/at NewlineToken 1
+                        peek/at Backtick 2
+                        peek/at Backtick 3
+                        peek/at Backtick 4
+                    ]   
+                    all [
+                        peek/at Backtick 1
+                        peek/at Backtick 2
+                        peek/at Backtick 3
+                    ]
+                ]
+            ]
+
+            if (peek NewlineToken) [
+                consume NewlineToken
+            ]
+            consume Backtick
+            consume Backtick
+            consume Backtick
+
+            ; and we want to ignore the one _after_ the three backticks
+            if (peek NewlineToken) [
+                consume NewlineToken
+            ]
+
+            make CodeBlockNode [
+                code: escapeString codeContent
+            ]
+
+        ] [ ; or inline code, delimited by 1 backtick
+            codeContent: copy ""
+            until [
+                currentToken: first self/tokens
+                append codeContent currentToken/value 
+                self/tokens: next self/tokens
+
+                peek Backtick
+            ]
+            consume Backtick
+
+            make InlineCodeNode [
+                code: escapeString codeContent
+            ]
+        ]
+    ]
+
+    parseExclamationMark: does [
+        consume ExclamationMark
+        if (peek LeftSquareBracket) [
+            linkNode: parseLeftSquareBracket
+            return make ImageNode [
+                alt: linkNode/text
+                src: linkNode/url
+            ]
+        ]
+        return make TextNode [
+            text: "!"
+        ]
+    ]
+    parseHorizontalRule: does [
+        consume HorizontalRule
+        return make HorizontalRuleNode []
+    ]
+
+    parseUrlToken: does [
+        token: consume UrlToken
+        make LinkNode [
+            text: token/value
+            url: token/value
+        ]
+    ]
+
+    ; ####################
+    ;  block nodes
+    ; ####################
+
+    maybeParseBlockTokens: does [
+        case [
+            all [
+                peek/at NewlineToken 1 
+                peek/at NewlineToken 2
+            ] [
+                consume NewlineToken
+                consume NewlineToken
+                return none
+            ]
+            
+            peek Header [
+                return parseHeader
+            ]
+            
+            peek GreaterThan [
+                return parseGreaterThan
+            ]
+
+            peek Hyphen [
+                return parseHyphen
+            ]
+
+            peek NumberWithDot [
+                return parseNumberWithDot
+            ]
+
+            peek FourSpaces [
+                consume FourSpaces
+                return none
+            ]
+
+            peek Backtick [
+                parseBacktick
+            ]
+
+            peek ExclamationMark [
+                parseExclamationMark
+            ]
+
+            peek HorizontalRule [
+                parseHorizontalRule
+            ]
+
+            true [
+                badToken: first self/tokens
+                print rejoin ["stream is " prettyFormat copy/part self/tokens 5]
+                print rejoin ["can't handle " badToken/type {Token in file "} self/file {", maybeParseBlockTokens}]
+                quit
+            ]
+        ]
+    ]
+
+    parseHeader: does [
+        headerToken: consume Header
+
+        headerText: copy ""
+        until [
+            currentToken: first self/tokens
+            if found? currentToken [
+                append headerText currentToken/value
+            ]
+            self/tokens: next self/tokens
+            
+            any [
+                tail? self/tokens
+                not found? currentToken
+                peek NewlineToken
+            ]
+        ]
+        if (not tail? self/tokens) [ ; we're at the end of the file
+            consume NewlineToken
+        ]
+
+        if (peek NewlineToken) [
+            consume NewlineToken
+        ]
+
+        make HeaderNode [
+            size: headerToken/size
+            text: headerText 
+                |> :trim
+        ]
+    ]
+
+    parseGreaterThan: does [
+        blockquoteContentNodes: copy []
+        until [
+            if peek GreaterThan [
+                consume GreaterThan
+            ]
+
+            maybeInlineNode: maybeParseInlineTokens
+            if found? maybeInlineNode [
+                append blockquoteContentNodes maybeInlineNode
+            ]
+
+            any [
+                tail? self/tokens
+                not found? maybeInlineNode
+                all [
+                    peek/at NewlineToken 1
+                    not peek/at GreaterThan 2
+                ]
+            ]
+        ]
+        if peek NewlineToken [
+            consume NewlineToken
+        ]
+
+        make BlockquoteNode [
+            children: blockquoteContentNodes
+        ]
+    ]
+
+    parseList: function [
+        isOrderedList [logic!]
+    ] [
+
+        listMarkerToken: either isOrderedList [NumberWithDot] [Hyphen]
+
+        ; add all the list items to a list node
+        listItemNodes: copy []
+        until [
+            if peek listMarkerToken [
+                consume listMarkerToken
+            ]
+
+            numberOfIndents: 0
+            ; if it's the start of a sub-list
+            if peek FourSpaces [
+                numberOfIndents: numberOfIndents + 1
+                consume FourSpaces
+
+                while [peek FourSpaces] [
+                    numberOfIndents: numberOfIndents + 1
+                    consume FourSpaces
+                ]
+                consume listMarkerToken
+            ]
+
+            ; add all the inline nodes in the line to an item node
+            inlineNodesInListItem: copy []
+            until [
+                maybeInlineNode: maybeParseInlineTokens
+                if found? maybeInlineNode [
+
+                    ; if there's 1 indent, we want to surround the inlineNodes by an UnorderedListNode
+                    ; if there's 2 indents, we want to surround the inlineNodes by an 2 UnorderedListNodes, etc
+                    ; 1 UnorderedListNode per indent
+                    nodeToAppend: maybeInlineNode
+                    repeat indentNumber numberOfIndents [
+                        innerListItemNode: make ListItemNode compose/deep [
+                            children: [(nodeToAppend)]
+                            doesntHaveListStyle: (indentNumber <> 1)
+                        ]
+                        nodeToAppend: make ListNode compose/deep [
+                            items: [(innerListItemNode)]
+                            isOrdered: isOrderedList
+                        ]
+                    ]
+
+                    append inlineNodesInListItem nodeToAppend
+                ]
+
+                any [
+                    tail? self/tokens
+                    not found? maybeInlineNode
+                    peek NewlineToken
+                ]
+            ]
+
+            ; the list might be at the end of the file
+            if (not tail? self/tokens) [
+                consume NewlineToken
+            ]
+
+            append listItemNodes make ListItemNode [
+                children: inlineNodesInListItem
+                doesntHaveListStyle: numberOfIndents > 0
+            ]
+
+            any [
+                tail? self/tokens
+                all [
+                    not peek listMarkerToken
+                    not peek FourSpaces ; the start of a sub-list
+                ]
+            ]
+        ]
+
+        ; we don't want this extra newline
+        if (peek NewlineToken) [
+            consume NewlineToken
+        ]
+
+        make ListNode [
+            items: listItemNodes
+            isOrdered: isOrderedList
+        ]
+    ]
+
+    parseHyphen: does [
+        return parseList false
+    ]
+
+    parseNumberWithDot: does [
+        return parseList true
+    ]
+]
+
+escapeString: function [
+    "converts iffy text to HTML entities"
+    str
+] [
+    str
+        |> [lambda/applyArgs [replace/all ? "&" "&amp;"]] ; we need to escape this first so that it doesn't escape "<" into "&lt;", then into "&amp;lt;"
+        |> [lambda/applyArgs [replace/all ? "<" "&lt;"]]
+        |> [lambda/applyArgs [replace/all ? ">" "&gt;"]]
+        |> [lambda/applyArgs [replace/all ? {"} "&quot;"]]
+        |> [lambda/applyArgs [replace/all ? {'} "&#x27;"]]
+        |> [lambda/applyArgs [replace/all ? "/" "&#x2F;"]]
 ]
