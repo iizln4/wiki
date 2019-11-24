@@ -12,6 +12,7 @@ found?: function [
 ] [
     not none? x
 ]
+
 contains?: function [
     "returns if 's contains 'e"
     s [series!] "the series to search in"
@@ -26,6 +27,23 @@ isOneOf: make op! function [
     s [series!]
 ] [
     contains? s e
+]
+
+objectHasKey: function [
+    "returns if 'obj has 'key"
+    obj [object!]
+    key [word!]
+] [
+    key isOneOf keys-of obj
+]
+
+cons: make op! function [
+    "inserts 'e at the head of 's, returns new 's"
+    e [any-type!] 
+    s [series!]
+] [
+    insert head s e 
+    s
 ]
 
 startsWith: function [
@@ -174,6 +192,32 @@ f_filter: function [
     result
 ]
 
+isTrueForAny: function [
+    "Returns whether (predicate e) is true for any 'e in 'block"
+    predicate  [function!] "the function to use" 
+    block [block!] "the block to map across"
+] [
+    foreach element block [
+        if predicate element [
+            return true
+        ]
+    ]
+    false
+]
+
+isTrueForAll: function [
+    "Returns whether (predicate e) is true for all 'e in 'block"
+    predicate  [function!] "the function to use" 
+    block [block!] "the block to map across"
+] [
+    foreach element block [
+        if not predicate element [
+            return false
+        ]
+    ]
+    true
+]
+
 assert: function [
     "Raises an error if every value in 'conditions doesn't evaluate to true. Enclose variables in brackets to compose them"
     conditions [block!]
@@ -184,7 +228,7 @@ assert: function [
             e: rejoin [
                 "assertion failed for: " mold/only conditions "," 
                 newline 
-                "conditions: [" mold compose/only conditions "]"
+                "conditions: " mold compose/only conditions
             ] 
             print e 
             do make error! rejoin ["assertion failed for: " mold conditions]
@@ -377,8 +421,17 @@ join: function [
     block [block!]
     sep [string! char!]
 ] [
-    rejoin compose/only flatten 
-        f_map lambda [reduce [? copy (to-string sep)]] block
+    len: length? block 
+    str: copy "" 
+    repeat i len [
+        e: block/:i
+        either not i == len [
+            append str rejoin [e (to-string sep)]
+        ] [
+            append str e
+        ]
+    ]
+    str
 ]
 
 pickProperties: function [
@@ -398,4 +451,19 @@ pickProperties: function [
         ]
     ]
     newObject
+]
+
+compact: func [
+    "returns a block! with word!s and their values; given `c: 6` and 'words as `[c]`, this returns `[c: 6]`"
+    words [block!]
+    /local compactedBlock word
+    return: [block!]
+] [
+    compactedBlock: copy [] 
+    foreach word words [
+        append compactedBlock compose [
+            to-set-word (to-lit-word word) (word)
+        ]
+    ] 
+    reduce compactedBlock
 ]

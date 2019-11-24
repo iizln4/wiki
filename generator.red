@@ -18,16 +18,7 @@ wikiLocation: (get-env "WIKI_LOCATION")
 templater: context load %templater.red
 markdownCompiler: context load %compiler/markdown/markdown.red
 
-compileToHTML: function [
-    filename [string!]
-    pageContent [string!] "the actual content, excluding the tags at the top"
-    extension [string!] 
-] [
-    switch extension [
-        "md" [markdownCompiler/compile filename pageContent]
-        "rst" ["CAN'T COMPILE RESTRUCTURED TEXT YET"]
-    ]
-]
+do %plugins/pluginApplier.red
 
 slugifyString: function [
     "turns 'File name a£%$' into 'file_name_'"
@@ -52,29 +43,41 @@ slugifyString: function [
     slugifiedString
 ]
 
-main: does [
-    deleteDir/matching wikiLocation lambda [endsWith ? ".html"]
-
-    wikipages: findFiles/matching %pages/ lambda [endsWith ? ".md"]
+main: function  [
+    args [string!]
+] [
+    shouldOnlyParseOneFile: not empty? args
+    either shouldOnlyParseOneFile [
+        filenameWithoutQuotes: either (contains? args space) [
+            copy/part at args 2 ((length? args) - 2) ; there'll be quotes around it we need to remove
+        ] [
+            args
+        ]
+        wikipages: reduce [to-file filenameWithoutQuotes]
+    ] [
+        deleteDir/matching wikiLocation lambda [endsWith ? ".html"]
+        wikipages: findFiles/matching %pages/ lambda [endsWith ? ".md"]
+    ]
+    
     wikiTemplate: read %wikipage.twig
 
     index: make map! reduce [
         'pages []
         'innerTags make map! []
     ]
+
+    ; a map! of pagenames to their tokens, ASTs and HTML
+    pagenames: copy []
+    filesData: make map! []
+
     foreach file wikipages [
         tagsString: ""
         filename: (next find/last file "/")
             |> :to-string
-        extension: case [
-            (find/last filename ".md") ["md"]
-            (find/last filename ".rst") ["rst"]
-            true ["md"]
-        ]
 
         filenameWithoutExtension: (find filename ".md")
             |> [copy/part filename]
-        htmlFilename: append (copy slugifyString filenameWithoutExtension) ".html"
+        nameOfHtmlFile: append (copy slugifyString filenameWithoutExtension) ".html"
 
         print rejoin ["compiling " filename]
 
@@ -86,43 +89,65 @@ main: does [
             ] 
             copy pageContent to end 
         ]
-        if not empty? tagsString [
+        if all [
+            not shouldOnlyParseOneFile
+            not empty? tagsString
+        ] [
             index: addToIndexFromTags index tagsString filenameWithoutExtension
         ]
 
-        content: compileToHTML filename pageContent extension
+        append pagenames filenameWithoutExtension
+        compiledResults: markdownCompiler/compile filename pageContent
+        put filesData filenameWithoutExtension context [
+            pagename: filenameWithoutExtension
+            htmlFilename: (nameOfHtmlFile)
+            tokens: compiledResults/tokens
+            ast: compiledResults/ast
+            html: compiledResults/html
+        ]
+    ]
+
+    newPluginApplier: make PluginApplier []
+    filesData: newPluginApplier/applyPlugins pagenames filesData
+
+    foreach pagename pagenames [
+        fileData: filesData/:pagename
 
         variables: make map! reduce [
-            'title filenameWithoutExtension
-            'content content
+            'title pagename
+            'content fileData/html
         ]
         
         wikipageHTML: templater/compile wikiTemplate variables
-        filepath: rejoin [wikiLocation htmlFilename]
+        filepath: rejoin [wikiLocation fileData/htmlFilename]
+
+        print rejoin ["writing " pagename]
         write filepath wikipageHTML
     ]
 
-    print "compiling index"
-    filenamesWithoutExtension: f_map function [page] [
-        filename: (next find/last page "/")
-            |> :to-string
-        filenameWithoutExtension: (find filename ".md")
-            |> [copy/part filename]
-    ] wikipages
-    listOfPages: sort filenamesWithoutExtension
+    if not shouldOnlyParseOneFile [
+        print "compiling index"
+        filenamesWithoutExtension: f_map function [page] [
+            filename: (next find/last page "/")
+                |> :to-string
+            filenameWithoutExtension: (find filename ".md")
+                |> [copy/part filename]
+        ] wikipages
+        listOfPages: sort filenamesWithoutExtension
 
-    indexListHTML: makeIndexListHTML index
-    aToZindexHTML: makeAToZIndexListHTML listOfPages
+        indexListHTML: makeIndexListHTML index
+        aToZindexHTML: makeAToZIndexListHTML listOfPages
 
-    indexTemplate: read %index.twig
-    indexVariables: make map! reduce [
-        'indexListHTML indexListHTML
-        'aToZindexHTML aToZindexHTML
-        'listOfPages listOfPages
+        indexTemplate: read %index.twig
+        indexVariables: make map! reduce [
+            'indexListHTML indexListHTML
+            'aToZindexHTML aToZindexHTML
+            'listOfPages listOfPages
+        ]
+        indexHTML: templater/compile indexTemplate indexVariables
+        indexFilepath: rejoin [wikiLocation "index.html"]
+        write indexFilepath indexHTML
     ]
-    indexHTML: templater/compile indexTemplate indexVariables
-    indexFilepath: rejoin [wikiLocation "index.html"]
-    write indexFilepath indexHTML
 ]
 
-main
+main (system/script/args)

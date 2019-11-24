@@ -5,7 +5,7 @@ Red [
 ]
 
 CodeGenerator: context [
-    file: ""
+    filename: ""
 
     generate: function [
         "recursively generates the HTML for a node in %nodes.red"
@@ -27,7 +27,7 @@ CodeGenerator: context [
             ]
 
             "NewlineNode" [
-                "<br>"
+                rejoin [newline "<br>" newline]
             ]
             "TextNode" [
                 node/text
@@ -77,10 +77,10 @@ CodeGenerator: context [
 
             "ListNode" [
                 listItems: either innerList [
-                    (f_map lambda [self/generate/innerList ?] node/items)
+                    (f_map lambda [self/generate/innerList ?] node/children)
                         |> lambda [join ? newline]
                 ] [
-                    (f_map lambda [self/generate ?] node/items)
+                    (f_map lambda [self/generate ?] node/children)
                         |> lambda [join ? newline]
                 ]
 
@@ -90,7 +90,7 @@ CodeGenerator: context [
                 either innerList [
                     rejoin ["<" listTag { class="list } listModifierClass { list--inner">} newline listItems "</" listTag ">"]
                 ] [
-                    rejoin ["<" listTag { class="list } listModifierClass {">} newline listItems "</" listTag ">"]
+                    rejoin ["<" listTag { class="list } listModifierClass {">} newline listItems newline "</" listTag ">"]
                 ]
             ]
             "ListItemNode" [
@@ -115,7 +115,7 @@ CodeGenerator: context [
             ]
         ] [
             print rejoin ["AST is " prettyFormat node]
-            do make error! rejoin ["can't handle " node/type { in file "} self/file {"}]
+            do make error! rejoin ["can't handle " node/type { in file "} self/filename {"}]
         ]
     ]
 ]

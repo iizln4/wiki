@@ -1,6 +1,6 @@
 Red [
     Title: "Nathan's templater compiler"
-    Author: "Nathan Douglas"
+    Author: "Nathan"
     License: "MIT"
 ]
 

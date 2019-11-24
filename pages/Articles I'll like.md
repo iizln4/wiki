@@ -16,13 +16,14 @@ http://blog.ploeh.dk/2017/01/27/dependency-injection-is-passing-an-argument/
 [People's favourite tech talks](https://news.ycombinator.com/item?id=12637239)
 
 ## Radical stuff
-(see [projects](projects.html))
+(see [projects](/projects.html))
 http://www.squeakland.org/resources/articles/article.jsp?id=1001 
 https://rsnous.com/posts/notes-from-dynamicland-geokit/ 
 http://www.vpri.org/pdf/tr2012001_steps.pdf 
 https://vimeo.com/274771188 
 https://futureofcoding.org/notes/bret-victor/dynamicland#day-1 
 http://fexpr.blogspot.com/2016/08/interpreted-programming-languages.html
+https://prog21.dadgum.com/30.html
 
 ## AI
 > humans are able to learn safe behaviours without having to die even once
@@ -37,6 +38,7 @@ https://code.fb.com/ai-research/unsupervised-machine-translation-a-novel-approac
 [Web design in 4 minutes](https://jgthms.com/web-design-in-4-minutes/)
 [Beej's guide to network programming](http://beej.us/guide/bgnet/)
 [Crafting interpreters](http://www.craftinginterpreters.com/introduction.html)
+[An incremental approach to compiler construction](https://github.com/namin/inc)
 
 # Biology
 [Do animals have feelings?](https://www.theatlantic.com/magazine/archive/2019/03/what-the-crow-knows/580726/)

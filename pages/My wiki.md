@@ -5,7 +5,7 @@ Hello
 
 I made this after I read [this interview with Ceasar Bautista](https://superorganizers.substack.com/p/why-ceasar-bautista-wrote-his-own), and I liked the idea:
 * I read a fair amount of stuff, and I can't really remember the little details of most of it. I hope I will if I write them down here
-* Writing what I think about things and how I understand they work should help my understand things properly  - I might _think_ I know how a compiler works, but do I really? Writing [an article](compiler.html) should make me actually understand it
+* Writing what I think about things and how I understand they work should help my understand things properly  - I might _think_ I know how a compiler works, but do I really? Writing [an article](/compiler.html) should make me actually understand it
 * I'm planning on making everything I need to make the wiki myself - so, the static-site generator, the Markdown -> HTML compiler, hosting the website, etc, which hopefully should make me a better programmer. If I want to have the pages be dynamic in the future, I've got [a little framework](https://github.com/nd9600/framework) I can use, too.
 
 # How it all works
@@ -56,7 +56,7 @@ it was particularly stupid because PARSE itself uses a stack internally - I shou
 Anyway, once the wikipage is compiled, we write it to `slugified_filename.html`, then compile and write the `index.twig` template the same way.
 
 Now the fun bit, the actual Markdown compiler!
-It's a pretty standard [compiler](compiler.html), as far as I know. I stole the basic design from [Gary Bernhardt's very very good screencast about it](https://www.destroyallsoftware.com/screencasts/catalog/a-compiler-from-scratch) - the three stages, the tokenizer that takes in the string and makes a stream of tokens, the parser that turns the token stream into an Abstract Syntax Tree, and the code generator that takes the AST and outputs the HTML. Have a look at the `compiler` link for more details.
+It's a pretty standard [compiler](/compiler.html), as far as I know. I stole the basic design from [Gary Bernhardt's very very good screencast about it](https://www.destroyallsoftware.com/screencasts/catalog/a-compiler-from-scratch) - the three stages, the tokenizer that takes in the string and makes a stream of tokens, the parser that turns the token stream into an Abstract Syntax Tree, and the code generator that takes the AST and outputs the HTML. Have a look at the `compiler` link for more details.
 
 Nice things to note:
 I made heavy use of the [pipe operator]() I wrote, since Red doesn't have one, [but you can make your own operators]() - it let me turn this function
@@ -153,7 +153,7 @@ I think I'll need these tokens:
 * newlines, so you know when a header stops
 * and everything else that isn't one of the above tokens, is a "text" token
 
-I forgot that the index tree needed to be able to handle tags having pages _and_ other tags inside it. It broke horribly when I put actually nested tags in (the programming section). Weirdly, fixing it actually seemed to simplify how I make the tree (the `addToIndexFromTags` function). Though, I really should make a Tree `object!`, with Nodes, Branches and Leaves, rather than just this ghetto version I have right now. Visiting the tree in a [DFS](dfs.html) shouldn't have been as hard as it was.
+I forgot that the index tree needed to be able to handle tags having pages _and_ other tags inside it. It broke horribly when I put actually nested tags in (the programming section). Weirdly, fixing it actually seemed to simplify how I make the tree (the `addToIndexFromTags` function). Though, I really should make a Tree `object!`, with Nodes, Branches and Leaves, rather than just this ghetto version I have right now. Visiting the tree in a [DFS](https://en.wikipedia.org/wiki/Depth-first_search) shouldn't have been as hard as it was.
 
 I'm not sure this "tokenizer-parser-code generator" approach is the right one right now; tokenizing the Markdown _seems_ to work ok now, but I'm 99% sure it'll break when I try to run it on something that isn't `# Abstract Syntax Tree` - mainly because I don't know how to tokenize text, everything that isn't in the Markdown syntax, something you just want to pass straight through to the output.
 Hmm, maybe just read the input in and immediately output it with transformations? No, too complicated, and how do you know when you're supposed to switch to e.g. bold mode? 
@@ -437,7 +437,7 @@ headers: [
 ]
 ```
 it should be the other way round - this way, it always matches two `Header1`s, rather than one `Header2`, which is exactly not what I want it to do.
-(this was really annoying to figure out - it was the parser that was complaining when it was trying to consume a `Text` token after getting a `Header1` token, which is what it _should_ be doing, so I thought that that was the bug, but the bug was _actually_ in the tokenizer, way upstream! so, like how when you look really hard for something you've lost in one place, and don't think how it could be in another place, I didn't find the bug for ages. Kinda reminds me of what's the context and what's the form you're designing, in [Notes on the Synthesis of Form](notes_on_the_synthesis_of_form.html)).
+(this was really annoying to figure out - it was the parser that was complaining when it was trying to consume a `Text` token after getting a `Header1` token, which is what it _should_ be doing, so I thought that that was the bug, but the bug was _actually_ in the tokenizer, way upstream! so, like how when you look really hard for something you've lost in one place, and don't think how it could be in another place, I didn't find the bug for ages. Kinda reminds me of what's the context and what's the form you're designing, in [Notes on the Synthesis of Form](/notes_on_the_synthesis_of_form.html)).
 
 I need to handle URLs explicitly so that it doesn't mess up with any of the special characters (see generator.red/slugifyFilename); it shouldn't think that e.g. an underscore is an Underscore token, for the beginning of an Emphasis node.
 
@@ -756,3 +756,73 @@ Ok that works for `<ul>`s, but definitely not `<ol>`s, because of the badly shap
 ![the ordered lists have the wrong numbers](static/images/orderedListsBadNumbers.png)
 
 Actually it's not just because of the AST - the numbers will stop be wrong if I fix it, since there's a `ListNode` that's being hidden by the `--noListStyle` class, so the outer lists will jump from 1 to 3, or 2 to 4, etc. Ah well. I don't think that's fixable.
+
+## Day 15
+Back and forwardlinks (gonna call them the linkmap) today (copying [Roam](https://roamresearch.com/) here)!
+Quite fun to do, once I got the refactoring I had to do first out of the way (makes me think of essential vs. incidental complexity).
+I needed to make bi-directional maps of "what pages does this page link to?" and "what pages link to this page?", and it turned out to be _really_ simple:
+```
+ pageToPagesMap: make map! [] ; what pages does page p link to?
+pagesFromPageMap: make map! [] ; what pages link to page p?
+
+foreach pagename pagenames [
+    fileData: filesData/:pagename
+
+    htmlFilename: fileData/htmlFilename
+    allLinks: self/getLinksFromNode fileData/ast
+    linksToOtherWikiPages: allLinks
+        |> [f_filter lambda [startsWith ? "/"]]
+        |> [f_map lambda [at ? 2]]
+    prettyPrint linksToOtherWikiPages
+
+    ; htmlFilename links to each of linksToOtherWikiPages
+    put pageToPagesMap htmlFilename linksToOtherWikiPages
+
+    ; each of linksToOtherWikiPages is linked to by htmlFilename
+    foreach pageLinkedTo linksToOtherWikiPages [
+        either found? pagesFromPageMap/:pageLinkedTo [
+            append pagesFromPageMap/:pageLinkedTo htmlFilename
+        ] [
+            put pagesFromPageMap pageLinkedTo reduce [htmlFilename]
+        ]
+    ]
+
+    getLinksFromNode: function [
+        "returns all the URLs in a node from an AST"
+        node [object!]
+        return: [block!]
+    ] [
+        if node/type == "LinkNode" [
+            return node/url ; todo: need to handle anchors
+        ]
+        if objectHasKey node 'children [
+            return node/children
+                |> [f_map lambda [self/getLinksFromNode ?]]
+                |> :flatten
+        ]
+        return []
+    ]
+]
+```
+
+The only annoying thing was, to do that, I needed to have the [AST](/abstract_syntax_tree.html) for each `.md` file inside the root script that "manages" the whole compilation of the wiki, since to work out which pages link to a specific page, you need to _have_ all the different pages ASTs already.
+And I was returning the compiled-Markdown HTML only, so I had to rejig it to return the AST (and the tokens, for good measure), as well. Reminds me a bit of Fred Brooks [No Silver Bullet](https://en.wikipedia.org/wiki/No_Silver_Bullet) paper on accidental and essential complexity.
+
+## Day 16
+I've made the forward and backlinks, now to actually put them on the page
+
+![back and forwardlink](static/images/backlinks.png)
+Easy
+
+---
+
+# Commonly needed code
+
+## Footnotes
+```
+footnote
+<sup id="fnref:1">[1](#fn:1)</sup>
+
+footnote backreference
+<span id="fn:1"></span> The other 5, if you're curious <sup>[\[return\]](#fnref:1)</sup>:
+```

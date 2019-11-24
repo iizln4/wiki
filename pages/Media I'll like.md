@@ -2,6 +2,7 @@ tags: [me/stuff_I'll_like]
 # Books
 
 ## Not read
+[The Twenty Days of Turin](https://lareviewofbooks.org/article/foul-small-minded-deities-giorgio-de-maria/)
 [Lord of Light](https://en.wikipedia.org/wiki/Lord_of_Light)
 [How Buildings Learn: What Happens After They're Built](https://www.amazon.co.uk/dp/0140139966)
 [Seeing Like a State: How Certain Schemes to Improve the Human Condition Have Failed](https://www.amazon.co.uk/dp/0300078153)
@@ -20,14 +21,14 @@ tags: [me/stuff_I'll_like]
 [Autumn in the Heavenly Kingdom: China, The West and the Epic Story of the Taiping Civil War](https://www.amazon.co.uk/Autumn-Heavenly-Kingdom-China-Taiping-ebook/dp/B0084E0DLU/ref=sr_1_1?s=books&ie=UTF8&qid=1536880056&sr=1-1&keywords=autumn+in+the+heavenly+kingdom)
 [Lost Enlightenment: Central Asia's Golden Age from the Arab Conquest to Tamerlane](https://www.amazon.co.uk/Lost-Enlightenment-Central-Conquest-Tamerlane/dp/0691165858)
 [The Lies of Locke Lamora](https://www.amazon.co.uk/Lies-Locke-Lamora-Scott-Lynch/dp/0575079754)
-[Bad Ideas\\Chemicals](https://www.amazon.co.uk/Bad-Ideas-Chemicals-Lloyd-Markham/dp/1912109689)
 [The Beginning of Infinity: Explanations that Transform The World (Penguin Press Science)](https://www.amazon.co.uk/dp/B004TRQAP4/ref=dp-kindle-redirect?_encoding=UTF8&btkr=1)
 [A Practical Guide to Evil](https://practicalguidetoevil.wordpress.com/2015/03/25/prologue/)
 
 ## Read
+[Bad Ideas\\Chemicals](https://www.amazon.co.uk/Bad-Ideas-Chemicals-Lloyd-Markham/dp/1912109689)
 [White Indians of Colonial America](https://amstudy.hku.hk/staff/kjohnson/PDF/engl56_kj_axtell_whiteindians.pdf)
 [The City is Not a Tree](https://www.patternlanguage.com/archive/cityisnotatree.html)
-[A Pattern Language - Wikipedia](https://en.wikipedia.org/wiki/A_Pattern_Language)
+[A Pattern Language](https://en.wikipedia.org/wiki/A_Pattern_Language)
 [Code: The Hidden Language of Computer Hardware and Software](https://www.amazon.co.uk/Code-Language-Computer-Hardware-Software/dp/0735611319)
 [How to build good software](https://www.csc.gov.sg/articles/how-to-build-good-software)
 [Henry Zhu's story](https://github.com/customer-stories/hzoo)
@@ -48,6 +49,8 @@ tags: [me/stuff_I'll_like]
 # Films
 
 ## Not seen
+[Breaker Morant](https://en.m.wikipedia.org/wiki/Breaker_Morant_\(film\))
+[A City of Sadness](https://en.wikipedia.org/wiki/A_City_of_Sadness)
 [Midnight in Paris](https://en.m.wikipedia.org/wiki/Midnight_in_Paris)
 [Jason and the Argonauts (1963) - IMDb](https://www.imdb.com/title/tt0057197/)
 [The Miracle Worker (1962) - IMDb](https://www.imdb.com/title/tt0056241/)
@@ -84,10 +87,12 @@ tags: [me/stuff_I'll_like]
 
 ## Not seen
 [Boston Legal](https://en.m.wikipedia.org/wiki/Boston_Legal)
-[ The Hitchhiker's Guide To The Galaxy ](https://www.amazon.co.uk/dp/B00005OCTS/)
+[The Hitchhiker's Guide To The Galaxy](https://www.amazon.co.uk/dp/B00005OCTS/)
 [The Americans](https://www.imdb.com/title/tt2149175/)
 [The Ascent of Man](https://www.imdb.com/title/tt0069733/)
 [Gilmore Girls](https://www.imdb.com/title/tt0238784/)
+[Edge of Darkness](https://en.wikipedia.org/wiki/Edge_of_Darkness)
+[This Life](https://en.wikipedia.org/wiki/This_Life_\(1996_TV_series\))
 
 ## Seen
 [Chernobyl](https://www.imdb.com/title/tt7366338/)

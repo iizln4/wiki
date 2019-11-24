@@ -36,6 +36,29 @@
     </section>
 
     <script>
+        function slugify(article) {
+            return article.replace(
+                /./g, 
+                function(char) {
+                    const letterRegex = RegExp(/[a-zA-Z]/);
+                    const numberRegex = RegExp(/[0-9]/);
+                    const specialCharacterRegex = RegExp(/[\$\-\_\.\+\!\*\(\)\,]/);
+            
+                    const isLetter = letterRegex.test(char);
+                    const isNumber = numberRegex.test(char);
+                    const isSpecialCharacter = specialCharacterRegex.test(char);
+                    if (isLetter) {
+                        return char.toLowerCase();
+                    } else if (char === " ") {
+                        return "_";
+                    } else if (isNumber || isSpecialCharacter) {
+                        return char;
+                    } else {
+                        return "";
+                    }
+                }
+            );
+        }
         const search = document.getElementById("search");
         search.classList.remove("display-none");
         
@@ -48,6 +71,8 @@
         ];
 
         const searchResults = document.getElementById("search__results");
+        
+        // filters the article list by the search input
         searchInput.addEventListener("input", function (event) {
             searchResults.innerHTML = "";
 
@@ -60,26 +85,8 @@
                 return article.toLowerCase().indexOf(searchTerm) > -1;
             });
 
-            const letterRegex = RegExp(/[a-zA-Z]/);
-            const numberRegex = RegExp(/[0-9]/);
-            const specialCharacterRegex = RegExp(/[\$\-\_\.\+\!\*\(\)\,]/);
             matchedArticles.forEach(function (article) {
-                const slugifiedArticle = article.replace(/./g, function(char) {
-                    const isLetter = letterRegex.test(char);
-                    const isNumber = numberRegex.test(char);
-                    const isSpecialCharacter = specialCharacterRegex.test(char);
-                    if (isLetter) {
-                        return char.toLowerCase();
-                    } else if (char === " ") {
-                        return "_";
-                    } else if (isNumber || isSpecialCharacter) {
-                        console.log(char, isNumber, isSpecialCharacter, specialCharacterRegex);
-                        return char;
-                    } else {
-                        return "";
-                    }
-                });
-
+                const slugifiedArticle = slugify(article);
 
                 const searchResult = document.createElement("a");
                 searchResult.classList.add("link", "display-block");
@@ -88,6 +95,28 @@
 
                 searchResults.append(searchResult);
             });
+        });
+        
+        // opens the 1st result in a new tab/window when enter is pressed
+        searchInput.addEventListener("keyup", function (event) {
+            if (event.code === "Enter") {
+                const searchTerm = searchInput.value.toLowerCase();
+                if (searchTerm.trim().length === 0) {
+                    return;
+                }
+
+                const matchedArticles = ARTICLES.filter(function (article) {
+                    return article.toLowerCase().indexOf(searchTerm) > -1;
+                });
+                
+                if (matchedArticles.length === 0) {
+                    return;
+                }
+                
+                const firstMatchedArticle = matchedArticles[0];
+                const slugifiedFirstMatchedArticle = slugify(firstMatchedArticle);
+                window.open(slugifiedFirstMatchedArticle + ".html", "_blank");
+            }
         });
     </script>
 </body>
